@@ -1,4 +1,4 @@
-from Converter.currencyData import currencyData
+from tools.currencyData import currencyData
 import urllib.request, json 
 
 class Converter:

@@ -1,5 +1,5 @@
-#Not the prettiest thing ever written, I just considered this purely cosmetic and pretty non-essential to the actual functionality
-def json_pretty(json):
+#This function is just to print the json with indentation
+def json_print(json):
     indentSize = 4
     indentPos = 0
     jsonString = str(json)
