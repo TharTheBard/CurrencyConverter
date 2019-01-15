@@ -2,29 +2,27 @@ from Converter.currencyData import currencyData
 import urllib.request, json 
 
 class Converter:
-    def convert_currency(self, amount, inCurrency, outCurrency = 'ListAll'):
+    def convert_currency(self, amount, inCurrencyString, outCurrencyString = 'ListAll'):
         rates = self.fetch_rates()
 
         #Gets currencies' international code if symbol is provided instead
-        inputCurrency = {"code": self.if_symbol_update_to_code(inCurrency, rates)}
-        outputCurrency = {"code": self.if_symbol_update_to_code(outCurrency, rates)}
+        inputCurrency = {"code": self.if_symbol_update_to_code(inCurrencyString, rates)}
+        outputCurrency = {"code": self.if_symbol_update_to_code(outCurrencyString, rates)}
 
         #Returns an Error if input/output currency is not recognized
         if inputCurrency["code"] == None:
             return {"Error": "Input currency not recognized"}
-        if outputCurrency["code"] == None and outCurrency != 'ListAll':
+        if outputCurrency["code"] == None and outCurrencyString != 'ListAll':
             return {"Error": "Output currency not recognized"}
 
         #Initializing .json output 
-        jsonOutput = {"input": {}, "output": {}}
-        jsonOutput["input"]["amount"] = amount
-        jsonOutput["input"]["currency"] = self.if_symbol_update_to_code(inCurrency, rates)
-
+        jsonOutput = { "input": {}, "output": {} }
+        jsonOutput["input"] = { "amount": amount, "currency": inputCurrency["code"] }
 
         inputCurrency['price'] = self.get_price(inputCurrency, rates)
 
         #Runs when output currency is not specified
-        if outCurrency == 'ListAll':
+        if outCurrencyString == 'ListAll':
             jsonOutput["output"] = self.get_all_conversions(amount, inputCurrency, rates)
             return jsonOutput
         #Runs when output currency IS specified
@@ -36,22 +34,30 @@ class Converter:
 
 
     def fetch_rates(self):
+        #This API returns only 32 currencies and updates once a day, however it is easy to maintain as it doesn't require an Access key
+        #... and should be enough for demonstration purposes
         with urllib.request.urlopen("https://ratesapi.io/api/latest") as url:
             rates = json.loads(url.read().decode())['rates']
             rates["EUR"] = 1
             return rates
 
+
     def get_price(self, currency, rates):
         return rates[currency["code"]]
 
-    def if_symbol_update_to_code(self, currency, rates):
-        if currency.upper() in rates.keys():
-            return currency.upper()
+
+    #The symbol translation should work even if the Rates API is exchanged for the more robust one
+    def if_symbol_update_to_code(self, currencyString, rates):
+        #Check whether the string is already a currency code in the current rates dictionary, return it if yes
+        if currencyString.upper() in rates.keys():
+            return currencyString.upper()
+        #If not, find the symbol and return a currency code corresponding to it (provided it is in the rates dictionary)
         else:
-            for key in currencyData:
-                if currencyData[key]["symbol"].lower() == currency.lower():
-                    return currencyData[key]["code"]
+            for currency in currencyData.values():
+                if currency["symbol"].lower() == currencyString.lower() and currency["code"] in rates.keys():
+                    return currency["code"]
             return None
+
 
     def get_single_conversion(self, amount, inputCurrency, outputCurrency):
         output = {}
