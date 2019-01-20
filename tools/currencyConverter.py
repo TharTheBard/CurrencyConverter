@@ -31,7 +31,7 @@ class CurrencyConverter:
 
 
     def get_price(self, currency, rates):
-        return rates[str(currency)]
+        return rates[currency]
 
 
     #The symbol translation should work even if the Rates API is exchanged for the more robust one
