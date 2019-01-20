@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_restful import Resource, Api
-from tools.converter import Converter
-from tools.currencyData import currencyData
+from tools.currencyConverter import CurrencyConverter
 
 
 app = Flask(__name__)
@@ -19,7 +18,7 @@ class ConvertCurrency(Resource):
         if 'output_currency' not in args.keys():
             args['output_currency'] = 'ListAll'
 
-        conversion = Converter().convert_currency(args['amount'], args['input_currency'], args['output_currency'])
+        conversion = CurrencyConverter().convert(args['amount'], args['input_currency'], args['output_currency'])
         return jsonify(conversion)
 
 api.add_resource(ConvertCurrency, '/currency_converter')

@@ -1,37 +1,25 @@
-from tools.currencyData import currencyData
 import urllib.request, json 
 
-class Converter:
-    def convert_currency(self, amount, inCurrencyString, outCurrencyString = 'ListAll'):
+class CurrencyConverter:
+    def convert(self, amount, inputCurrency, outputCurrency = 'ListAll'):
         rates = self.fetch_rates()
 
         #Gets currencies' international code if symbol is provided instead
-        inputCurrency = {"code": self.if_symbol_update_to_code(inCurrencyString, rates)}
-        outputCurrency = {"code": self.if_symbol_update_to_code(outCurrencyString, rates)}
+        inputCurrency = {"code": self.if_symbol_update_to_code(inputCurrency, rates)}
+        outputCurrency = {"code": self.if_symbol_update_to_code(outputCurrency, rates)}
 
         #Returns an Error if input/output currency is not recognized
         if inputCurrency["code"] == None:
             return {"Error": "Input currency not recognized"}
-        if outputCurrency["code"] == None and outCurrencyString != 'ListAll':
+        if outputCurrency["code"] == None:
             return {"Error": "Output currency not recognized"}
 
-        #Initializing .json output 
+        outputCurrencyList = self.list_output_currencies(outputCurrency["code"], rates)
+ 
         jsonOutput = { "input": {}, "output": {} }
         jsonOutput["input"] = { "amount": amount, "currency": inputCurrency["code"] }
-
-        inputCurrency['price'] = self.get_price(inputCurrency, rates)
-
-        #Runs when output currency is not specified
-        if outCurrencyString == 'ListAll':
-            jsonOutput["output"] = self.get_all_conversions(amount, inputCurrency, rates)
-            return jsonOutput
-        #Runs when output currency IS specified
-        else:
-            outputCurrency["price"] = self.get_price(outputCurrency, rates)
-
-            jsonOutput["output"] = self.get_single_conversion(amount, inputCurrency, outputCurrency)
-            return jsonOutput
-
+        jsonOutput["output"] = self.get_conversions(amount, inputCurrency["code"], outputCurrencyList, rates)
+        return jsonOutput
 
     def fetch_rates(self):
         #This API returns only 32 currencies and updates once a day, however it is easy to maintain as it doesn't require an Access key
@@ -43,7 +31,7 @@ class Converter:
 
 
     def get_price(self, currency, rates):
-        return rates[currency["code"]]
+        return rates[str(currency)]
 
 
     #The symbol translation should work even if the Rates API is exchanged for the more robust one
@@ -51,26 +39,38 @@ class Converter:
         #Check whether the string is already a currency code in the current rates dictionary, return it if yes
         if currencyString.upper() in rates.keys():
             return currencyString.upper()
+        elif currencyString == 'ListAll':
+            return currencyString
         #If not, find the symbol and return a currency code corresponding to it (provided it is in the rates dictionary)
         else:
+            currencyData = self.open_currency_data()
             for currency in currencyData.values():
                 if currency["symbol"].lower() == currencyString.lower() and currency["code"] in rates.keys():
                     return currency["code"]
             return None
 
+    def open_currency_data(self):
+        with open('tools/currencyData.json', encoding="utf8") as json_file:  
+            return json.load(json_file)
 
-    def get_single_conversion(self, amount, inputCurrency, outputCurrency):
-        output = {}
-        priceInEur = amount / inputCurrency['price']
-        conversion = self.two_decimals(priceInEur * outputCurrency["price"])
-        output[outputCurrency["code"]] = conversion
-        return output
 
-    def get_all_conversions(self, amount, inputCurrency, rates):
+    def list_output_currencies(self, outputCurrencyString, rates):
+        if outputCurrencyString == 'ListAll':
+            return list(rates.keys())
+        else:
+            return [ outputCurrencyString ]
+
+
+    def get_conversions(self, amount, inputCurrency, outputCurrencyList, rates):
         output = {}
-        priceInEur = amount / inputCurrency['price']
-        for code in rates:
-            output[code] = self.two_decimals(priceInEur * rates[code])
+
+        inputCurrencyPrice = self.get_price(inputCurrency, rates)
+        priceInEur = amount / inputCurrencyPrice
+
+        for currency in outputCurrencyList:
+            if currency != inputCurrency:
+                conversion = priceInEur * self.get_price(currency, rates)
+                output[currency] = self.two_decimals(conversion)
         return output
 
     def two_decimals(self, num):
